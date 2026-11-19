@@ -2,6 +2,7 @@ library(ggplot2)
 library(dplyr)
 library(lubridate)
 library(tidyr)
+library(writexl)
 
 #Data load in 
 bm_raw <- read.csv("Data/BlueMesaUnreg.csv")
@@ -29,7 +30,7 @@ all_annual <- all_filtered %>%
   mutate(year = year(datetime)) %>%
   group_by(year, res) %>%
   summarise(
-    annual_inflow = sum(unregulated.inflow.volume, na.rm = TRUE),
+    annual_inflow = sum(unregulated.inflow.volume, na.rm = TRUE) / 1000000,
     .groups = "drop"
   )
 
@@ -57,6 +58,28 @@ flow_diff <- all_annual %>%
 
 # Plots differences over time
 ggplot(data = flow_diff) +
-  geom_line(aes(x = year, y = annual_value, color = res))
+  geom_line(aes(x = year, y = annual_value, color = res)) +
+  labs( x = "Year", y = "Unregulated Inflow Difference from Powell (ac-ft)") 
+
+
+
+# Puts unreg at powell on x axis and the rest on the y axis
+annual_wide <- all_annual %>%
+  pivot_wider(
+    names_from = res,
+    values_from = annual_inflow
+  )
+
+  
+annual_long <- annual_wide %>%
+  pivot_longer(
+    cols = c('Blue Mesa', 'Flaming Gorge', 'Navajo'),
+    names_to = "reservoir",
+    values_to = "value_y"
+  )
+
+sheets <- list("wide" = annual_wide, "long" = annual_long)
+write_xlsx(sheets, "AnnualInflowAll.xlsx")
+
 
 
